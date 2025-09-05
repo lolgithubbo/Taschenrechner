@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Taschenrechner</title>
+  <meta name="description" content="Einfacher, schneller Taschenrechner – ideal für Mobilgeräte." />
+  <meta name="theme-color" content="#111827" />
+  <style>
+    :root {
+      --bg: #0f172a;       /* slate-900 */
+      --panel: #111827;    /* gray-900 */
+      --muted: #334155;    /* slate-600 */
+      --text: #e5e7eb;     /* gray-200 */
+      --accent: #22c55e;   /* green-500 */
+      --danger: #ef4444;   /* red-500 */
+      --shadow: 0 8px 24px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, #0b1220, #0f172a 30%, #0f172a 100%);
+      color: var(--text);
+      display: grid; place-items: center;
+    }
+    .app {
+      width: min(480px, 100%);
+      padding: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; }
+    header h1 { font-size: 18px; margin: 0; letter-spacing: .3px; opacity:.9; }
+
+    .display {
+      background: #0b1220;
+      border-radius: var(--radius);
+      padding: 16px;
+      min-height: 92px;
+      display:flex; flex-direction:column; justify-content:flex-end; align-items:flex-end;
+      word-wrap: break-word; word-break: break-all;
+    }
+    .expr { font-size: 14px; color: #94a3b8; min-height: 18px; }
+    .result { font-size: clamp(28px, 7vw, 44px); font-variant-numeric: tabular-nums; }
+
+    .grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    button {
+      appearance: none; border: 0; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+      background: #111827; color: var(--text);
+      border-radius: 16px; padding: 16px; font-size: 18px; font-weight: 600;
+      box-shadow: inset 0 -2px 0 rgba(255,255,255,.03), 0 6px 16px rgba(0,0,0,.35);
+      transition: transform .06s ease, filter .2s ease, background .2s ease;
+    }
+    button:active { transform: translateY(1px) scale(.99); }
+
+    .op { background: #1f2937; }
+    .accent { background: #16a34a; color: white; }
+    .danger { background: #b91c1c; color: white; }
+    .wide { grid-column: span 2; }
+
+    footer { opacity:.6; font-size:12px; text-align:center; margin-top:12px; }
+    a { color: var(--accent); text-decoration: none; }
+
+    /* Make it look great on notches */
+    .safe { padding-bottom: env(safe-area-inset-bottom); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <header>
+        <h1>🧮 Taschenrechner</h1>
+        <div style="font-size:12px;color:#94a3b8">Offline-fähig, mobilfreundlich</div>
+      </header>
+
+      <div class="display" role="status" aria-live="polite">
+        <div id="expr" class="expr">&nbsp;</div>
+        <div id="result" class="result">0</div>
+      </div>
+
+      <div class="grid safe" id="keys">
+        <button class="danger" data-key="AC" aria-label="Alles löschen">AC</button>
+        <button class="op" data-key="DEL" aria-label="Löschen">⌫</button>
+        <button class="op" data-key="%">%</button>
+        <button class="op" data-key="/">÷</button>
+
+        <button data-key="7">7</button>
+        <button data-key="8">8</button>
+        <button data-key="9">9</button>
+        <button class="op" data-key="*">×</button>
+
+        <button data-key="4">4</button>
+        <button data-key="5">5</button>
+        <button data-key="6">6</button>
+        <button class="op" data-key="-">−</button>
+
+        <button data-key="1">1</button>
+        <button data-key="2">2</button>
+        <button data-key="3">3</button>
+        <button class="op" data-key="+">+</button>
+
+        <button class="wide" data-key="0">0</button>
+        <button data-key="," aria-label="Komma">,</button>
+        <button class="accent" data-key="=">=</button>
+      </div>
+    </div>
+    <footer>Tippe Zahlen & Operatoren, oder nutze die Tastatur. Made for Vercel.</footer>
+  </div>
+
+  <script>
+    const exprEl = document.getElementById('expr');
+    const resultEl = document.getElementById('result');
+    const keys = document.getElementById('keys');
+
+    let expression = '';
+
+    function formatNumber(n){
+      const num = Number(n);
+      if (!isFinite(num)) return 'Error';
+      return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 10 }).format(num);
+    }
+
+    function updateDisplay(tempResult){
+      exprEl.textContent = expression || '\u00A0';
+      if (tempResult !== undefined) {
+        resultEl.textContent = tempResult;
+      }
+    }
+
+    function sanitize(expr){
+      // Allow digits, ops, dot, comma, percent, parentheses, spaces
+      expr = expr.replace(/,/g, '.');
+      expr = expr.replace(/×/g, '*').replace(/÷/g, '/');
+      // Percent: convert standalone number% to (number/100)
+      expr = expr.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+      // Remove multiple leading operators
+      expr = expr.replace(/^[*/%]+/, '');
+      // Keep only safe chars
+      if (!/^[-+*/().\d\s]+$/.test(expr)) return null;
+      return expr;
+    }
+
+    function evaluate(){
+      const safe = sanitize(expression);
+      if (safe == null) return 'Error';
+      try {
+        // Using Function for math evaluation in a controlled, sanitized context
+        const value = Function('return (' + safe + ')')();
+        if (value === undefined) return '0';
+        return formatNumber(value);
+      } catch (e) {
+        return 'Error';
+      }
+    }
+
+    function press(key){
+      if (key === 'AC') { expression = ''; updateDisplay('0'); return; }
+      if (key === 'DEL') { expression = expression.slice(0, -1); updateDisplay(evaluate()); return; }
+      if (key === '=') { const res = evaluate(); expression = (res === 'Error') ? '' : sanitize(expression).toString(); resultEl.textContent = res; return; }
+      if (key === ',') key = '.'; // German comma as decimal
+
+      // Prevent duplicate operators
+      const last = expression.slice(-1);
+      if ('+-*/'.includes(key) && '+-*/'.includes(last)) {
+        expression = expression.slice(0, -1) + key;
+      } else {
+        expression += key;
+      }
+      updateDisplay(evaluate());
+    }
+
+    keys.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      press(btn.dataset.key);
+    });
+
+    // Keyboard support
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { press('='); e.preventDefault(); return; }
+      if (e.key === 'Backspace') { press('DEL'); e.preventDefault(); return; }
+      const allowed = '0123456789+-*/.%()';
+      if (allowed.includes(e.key)) press(e.key);
+      if (e.key === ',') press(',');
+    });
+
+    // Set initial display
+    updateDisplay('0');
+  </script>
+</body>
+</html>
+  
