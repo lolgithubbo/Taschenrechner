@@ -4,76 +4,41 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
   <title>Taschenrechner</title>
-  <meta name="description" content="Einfacher, schneller Taschenrechner – ideal für Mobilgeräte." />
+  <meta name="description" content="Ein Taschenrechner mit Verlauf, Speicher und Themes." />
+  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#111827" />
   <style>
     :root {
-      --bg: #0f172a;       /* slate-900 */
-      --panel: #111827;    /* gray-900 */
-      --muted: #334155;    /* slate-600 */
-      --text: #e5e7eb;     /* gray-200 */
-      --accent: #22c55e;   /* green-500 */
-      --danger: #ef4444;   /* red-500 */
-      --shadow: 0 8px 24px rgba(0,0,0,.35);
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --accent: #22c55e;
+      --danger: #ef4444;
       --radius: 18px;
+      --shadow: 0 8px 24px rgba(0,0,0,.35);
     }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
     body {
-      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background: linear-gradient(180deg, #0b1220, #0f172a 30%, #0f172a 100%);
-      color: var(--text);
-      display: grid; place-items: center;
+      margin: 0; font-family: system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      display: grid; place-items: center; min-height:100vh;
     }
-    .app {
-      width: min(480px, 100%);
-      padding: 16px;
-    }
-    .card {
-      background: var(--panel);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 16px;
-    }
+    .app { width: min(500px,100%); padding: 16px; }
+    .card { background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
     header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; }
-    header h1 { font-size: 18px; margin: 0; letter-spacing: .3px; opacity:.9; }
-
-    .display {
-      background: #0b1220;
-      border-radius: var(--radius);
-      padding: 16px;
-      min-height: 92px;
-      display:flex; flex-direction:column; justify-content:flex-end; align-items:flex-end;
-      word-wrap: break-word; word-break: break-all;
-    }
-    .expr { font-size: 14px; color: #94a3b8; min-height: 18px; }
-    .result { font-size: clamp(28px, 7vw, 44px); font-variant-numeric: tabular-nums; }
-
-    .grid {
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-    }
-    button {
-      appearance: none; border: 0; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
-      background: #111827; color: var(--text);
-      border-radius: 16px; padding: 16px; font-size: 18px; font-weight: 600;
-      box-shadow: inset 0 -2px 0 rgba(255,255,255,.03), 0 6px 16px rgba(0,0,0,.35);
-      transition: transform .06s ease, filter .2s ease, background .2s ease;
-    }
-    button:active { transform: translateY(1px) scale(.99); }
-
-    .op { background: #1f2937; }
-    .accent { background: #16a34a; color: white; }
-    .danger { background: #b91c1c; color: white; }
+    header h1 { font-size: 18px; margin: 0; }
+    .display { background:#0b1220; border-radius: var(--radius); padding:16px; min-height:92px; display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end; }
+    .expr { font-size:14px; color:#94a3b8; }
+    .result { font-size:32px; font-variant-numeric:tabular-nums; }
+    .grid { margin-top:14px; display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    button { border:0; border-radius:14px; padding:16px; font-size:18px; font-weight:600; background:#1f2937; color:var(--text); cursor:pointer; }
+    button:active { transform:scale(.98); }
+    .accent { background: var(--accent); color:white; }
+    .danger { background: var(--danger); color:white; }
     .wide { grid-column: span 2; }
-
-    footer { opacity:.6; font-size:12px; text-align:center; margin-top:12px; }
-    a { color: var(--accent); text-decoration: none; }
-
-    /* Make it look great on notches */
-    .safe { padding-bottom: env(safe-area-inset-bottom); }
+    .tools { margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; }
+    .history, .themes { margin-top:14px; background:#1f2937; border-radius:12px; padding:10px; max-height:200px; overflow:auto; }
+    .history h3, .themes h3 { margin:0 0 6px; font-size:14px; color:#94a3b8; }
+    .theme-btn { display:inline-block; width:28px; height:28px; border-radius:50%; border:2px solid white; cursor:pointer; margin:3px; }
   </style>
 </head>
 <body>
@@ -81,123 +46,117 @@
     <div class="card">
       <header>
         <h1>🧮 Taschenrechner</h1>
-        <div style="font-size:12px;color:#94a3b8">Offline-fähig, mobilfreundlich</div>
+        <small id="mode-info">Theme: Standard</small>
       </header>
-
-      <div class="display" role="status" aria-live="polite">
+      <div class="display">
         <div id="expr" class="expr">&nbsp;</div>
         <div id="result" class="result">0</div>
       </div>
-
-      <div class="grid safe" id="keys">
-        <button class="danger" data-key="AC" aria-label="Alles löschen">AC</button>
-        <button class="op" data-key="DEL" aria-label="Löschen">⌫</button>
-        <button class="op" data-key="%">%</button>
-        <button class="op" data-key="/">÷</button>
-
-        <button data-key="7">7</button>
-        <button data-key="8">8</button>
-        <button data-key="9">9</button>
-        <button class="op" data-key="*">×</button>
-
-        <button data-key="4">4</button>
-        <button data-key="5">5</button>
-        <button data-key="6">6</button>
-        <button class="op" data-key="-">−</button>
-
-        <button data-key="1">1</button>
-        <button data-key="2">2</button>
-        <button data-key="3">3</button>
-        <button class="op" data-key="+">+</button>
-
-        <button class="wide" data-key="0">0</button>
-        <button data-key="," aria-label="Komma">,</button>
-        <button class="accent" data-key="=">=</button>
+      <div class="grid" id="keys"></div>
+      <div class="tools">
+        <button id="m-plus">M+</button>
+        <button id="m-minus">M−</button>
+        <button id="m-recall">MR</button>
+        <button id="m-clear">MC</button>
+      </div>
+      <div class="history">
+        <h3>Verlauf</h3>
+        <ul id="history-list" style="list-style:none;padding:0;margin:0;font-size:14px;"></ul>
+      </div>
+      <div class="themes">
+        <h3>Theme wählen</h3>
+        <div id="theme-buttons"></div>
       </div>
     </div>
-    <footer>Tippe Zahlen & Operatoren, oder nutze die Tastatur. Made for Vercel.</footer>
   </div>
+<script>
+  const exprEl = document.getElementById('expr');
+  const resultEl = document.getElementById('result');
+  const keys = document.getElementById('keys');
+  const historyList = document.getElementById('history-list');
+  const themeButtons = document.getElementById('theme-buttons');
+  const modeInfo = document.getElementById('mode-info');
 
-  <script>
-    const exprEl = document.getElementById('expr');
-    const resultEl = document.getElementById('result');
-    const keys = document.getElementById('keys');
+  const keyLayout = [
+    ['AC','DEL','%','/'],
+    ['7','8','9','*'],
+    ['4','5','6','-'],
+    ['1','2','3','+'],
+    ['0','.','=']
+  ];
 
-    let expression = '';
+  let expression = '';
+  let memory = 0;
+  let history = JSON.parse(localStorage.getItem('history')||'[]');
+  let theme = localStorage.getItem('theme')||'green';
 
-    function formatNumber(n){
-      const num = Number(n);
-      if (!isFinite(num)) return 'Error';
-      return new Intl.NumberFormat('de-DE', { maximumFractionDigits: 10 }).format(num);
-    }
+  const themes = {
+    green:{accent:'#22c55e',bg:'#0f172a',panel:'#111827'},
+    blue:{accent:'#3b82f6',bg:'#0f172a',panel:'#111827'},
+    red:{accent:'#ef4444',bg:'#0f172a',panel:'#111827'},
+    purple:{accent:'#8b5cf6',bg:'#0f172a',panel:'#111827'},
+    light:{accent:'#3b82f6',bg:'#f9fafb',panel:'#e5e7eb',text:'#111827'}
+  };
 
-    function updateDisplay(tempResult){
-      exprEl.textContent = expression || '\u00A0';
-      if (tempResult !== undefined) {
-        resultEl.textContent = tempResult;
-      }
-    }
+  function applyTheme(name){
+    const t = themes[name]||themes.green;
+    document.documentElement.style.setProperty('--accent',t.accent);
+    document.documentElement.style.setProperty('--bg',t.bg);
+    document.documentElement.style.setProperty('--panel',t.panel);
+    if(t.text){ document.documentElement.style.setProperty('--text',t.text); } else { document.documentElement.style.setProperty('--text','#e5e7eb'); }
+    localStorage.setItem('theme',name);
+    modeInfo.textContent = 'Theme: '+name;
+  }
 
-    function sanitize(expr){
-      // Allow digits, ops, dot, comma, percent, parentheses, spaces
-      expr = expr.replace(/,/g, '.');
-      expr = expr.replace(/×/g, '*').replace(/÷/g, '/');
-      // Percent: convert standalone number% to (number/100)
-      expr = expr.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
-      // Remove multiple leading operators
-      expr = expr.replace(/^[*/%]+/, '');
-      // Keep only safe chars
-      if (!/^[-+*/().\d\s]+$/.test(expr)) return null;
-      return expr;
-    }
+  function formatNumber(n){ const num = Number(n); return isFinite(num)? num.toString() : 'Error'; }
+  function sanitize(expr){ expr=expr.replace(/,/g,'.').replace(/×/g,'*').replace(/÷/g,'/'); expr=expr.replace(/(\\d+(?:\\.\\d+)?)%/g,'($1/100)'); return expr; }
+  function evaluate(){ try{ return formatNumber(Function('return '+sanitize(expression))()); }catch{ return 'Error'; } }
 
-    function evaluate(){
-      const safe = sanitize(expression);
-      if (safe == null) return 'Error';
-      try {
-        // Using Function for math evaluation in a controlled, sanitized context
-        const value = Function('return (' + safe + ')')();
-        if (value === undefined) return '0';
-        return formatNumber(value);
-      } catch (e) {
-        return 'Error';
-      }
-    }
+  function updateDisplay(){ exprEl.textContent=expression||' '; resultEl.textContent=evaluate(); }
+  function press(key){
+    if(key==='AC'){expression='';updateDisplay();return;}
+    if(key==='DEL'){expression=expression.slice(0,-1);updateDisplay();return;}
+    if(key==='='){const res=evaluate();if(res!=='Error'){history.unshift(expression+' = '+res);history=history.slice(0,10);localStorage.setItem('history',JSON.stringify(history));renderHistory();expression=res;}updateDisplay();return;}
+    expression+=key; updateDisplay();
+  }
 
-    function press(key){
-      if (key === 'AC') { expression = ''; updateDisplay('0'); return; }
-      if (key === 'DEL') { expression = expression.slice(0, -1); updateDisplay(evaluate()); return; }
-      if (key === '=') { const res = evaluate(); expression = (res === 'Error') ? '' : sanitize(expression).toString(); resultEl.textContent = res; return; }
-      if (key === ',') key = '.'; // German comma as decimal
+  keys.innerHTML = keyLayout.map(row => row.map(k=>{
+    let cls='';
+    if(k==='AC')cls='danger';
+    if(k==='=')cls='accent';
+    return `<button class=\"${cls}\" data-key=\"${k}\">${k}</button>`;
+  }).join('')).join('');
 
-      // Prevent duplicate operators
-      const last = expression.slice(-1);
-      if ('+-*/'.includes(key) && '+-*/'.includes(last)) {
-        expression = expression.slice(0, -1) + key;
-      } else {
-        expression += key;
-      }
-      updateDisplay(evaluate());
-    }
+  keys.addEventListener('click',e=>{
+    if(e.target.dataset.key) press(e.target.dataset.key);
+  });
 
-    keys.addEventListener('click', (e) => {
-      const btn = e.target.closest('button');
-      if (!btn) return;
-      press(btn.dataset.key);
+  function renderHistory(){
+    historyList.innerHTML='';
+    history.forEach(item=>{
+      const li=document.createElement('li');
+      li.textContent=item;
+      li.onclick=()=>{ expression=item.split('=')[1].trim(); updateDisplay(); }
+      historyList.appendChild(li);
     });
+  }
+  renderHistory();
 
-    // Keyboard support
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { press('='); e.preventDefault(); return; }
-      if (e.key === 'Backspace') { press('DEL'); e.preventDefault(); return; }
-      const allowed = '0123456789+-*/.%()';
-      if (allowed.includes(e.key)) press(e.key);
-      if (e.key === ',') press(',');
-    });
+  // Memory
+  document.getElementById('m-plus').onclick=()=>{memory+=Number(evaluate())||0;};
+  document.getElementById('m-minus').onclick=()=>{memory-=Number(evaluate())||0;};
+  document.getElementById('m-recall').onclick=()=>{expression+=memory;updateDisplay();};
+  document.getElementById('m-clear').onclick=()=>{memory=0;};
 
-    // Set initial display
-    updateDisplay('0');
-  </script>
+  // Themes
+  themeButtons.innerHTML = Object.keys(themes).map(t=>`<div class=\"theme-btn\" style=\"background:${themes[t].accent}\" data-theme=\"${t}\"></div>`).join('');
+  themeButtons.onclick=(e)=>{ if(e.target.dataset.theme){ applyTheme(e.target.dataset.theme);} };
+
+  applyTheme(theme);
+
+  // PWA Service Worker
+  if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worker.js');}
+  updateDisplay();
+</script>
 </body>
 </html>
-  
